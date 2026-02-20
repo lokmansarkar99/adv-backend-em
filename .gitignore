@@ -1,0 +1,12 @@
+.env
+node_modules
+node_modules/
+dist
+logs
+*.log
+*.log.*
+winston-logs
+winston-logs/
+winston/
+winston/*.log
+winston/*.log.*
