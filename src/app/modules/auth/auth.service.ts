@@ -1,6 +1,6 @@
 import brcypt from "bcrypt";
 import { StatusCodes } from "http-status-codes";    
-import { Secret } from "jsonwebtoken";
+import { JwtPayload, Secret } from "jsonwebtoken";
 import config from "../../../config";
 import ApiError from "../../../errors/ApiErrors";
 import { jwtHelper } from "../../../helpers/jwtHelper";
@@ -12,6 +12,7 @@ import { RegisterPayload, LoginPayload } from "../user/user.validation";
 import { STATUS } from "../../../enums/user";
 import { emailTemplate } from "../../../shared/emailTemplate";
 import { emailHelper } from "../../../helpers/emailHelper";
+
 
 
 // Register 
@@ -102,10 +103,22 @@ if(user.status === STATUS.INACTIVE) {
 }
 
 
+const refreshToken = async (data : { refreshToken: string }) => { 
+    const {refreshToken} = data
+    const accessToken = await jwtHelper.createNewAccessTokenWithRefeshToken(refreshToken)
+    return accessToken  
+}
 
 
+const logout = async (data: {refreshToken: string}) => {
+    const {refreshToken} = data
+
+    // const decoded = jwtHelper.verifyToken(refreshToken, config.jwt.jwt_refresh_secret as Secret) as JwtPayload
+
+}
 
 export const AuthService = { 
     registerToDB,
-    logintoDB
+    logintoDB,
+    refreshToken
 }
