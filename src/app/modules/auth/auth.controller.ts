@@ -7,7 +7,7 @@ import { AuthService } from "./auth.service";
 
 import config from "../../../config";
 import { setAuthCookie } from "../../../utils/setCookie";
-import { access } from "node:fs";
+
 
 const registerUser = catchAsync(async(req:Request, res:Response) => {
     const result = await AuthService.registerToDB(req.body)
@@ -25,7 +25,9 @@ const registerUser = catchAsync(async(req:Request, res:Response) => {
 const loginUser = catchAsync(async(req:Request, res:Response) => {
     const result = await AuthService.logintoDB(req.body)
 
-    setAuthCookie(res, {refreshToken: result.refeshToken})
+    const {refreshToken}  = await result
+
+    setAuthCookie(res, {refreshToken:refreshToken})
 
 
     sendResponse(res, {
@@ -38,6 +40,8 @@ const loginUser = catchAsync(async(req:Request, res:Response) => {
 
 
 const refreshToken = catchAsync (async (req:Request, res:Response) => {
+
+    
     const result  = await AuthService.refreshToken(req.body)
     console.log(result)
     sendResponse(res, {
@@ -66,9 +70,50 @@ const logout = catchAsync(async (req: Request, res: Response) => {
     data: null,
   });
 });
+
+
+const sendOtp = catchAsync(async (req: Request, res: Response) => {
+  const { email, isResetPassword } = req.body;
+
+  const result = await AuthService.sendOtp({ email, isResetPassword });
+
+  return sendResponse(res, {
+    success: true,
+    message: "OTP sent successfully",
+    statusCode: StatusCodes.OK,
+    data: result,
+  });
+});
+
+const userVerify = catchAsync(async (req: Request, res: Response) => {
+  const result = await AuthService.userVerify(req.body);
+
+  return sendResponse(res, {
+    success: true,
+    message: "User verified successfully",
+    statusCode: StatusCodes.OK,
+    data: result,
+  });
+});
+
+const forgetPassword = catchAsync(async (req: Request, res: Response) => {
+  const result = await AuthService.forgetPassword(req.body);
+
+  return sendResponse(res, {
+    success: true,
+    message: "Password reset successfully",
+    statusCode: StatusCodes.OK,
+    data: result,
+  });
+});
+
 export const AuthController = {
     registerUser,
     loginUser,
     refreshToken,
-    logout
+    logout,
+    sendOtp,
+    forgetPassword,
+    userVerify,
+
 }

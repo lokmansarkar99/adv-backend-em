@@ -1,20 +1,47 @@
-import express from 'express'
+import express from "express";
+import { AuthController } from "./auth.controller";
+import validateRequest from "../../middlewares/validateRequest";
+import { AuthValidation } from "../user/user.validation";
+import { checkAuth } from "../../middlewares/checkAuth";
+import { USER_ROLES } from "../../../enums/user";
 
-import { AuthController } from './auth.controller'
-import validateRequest from '../../middlewares/validateRequest'
-import { AuthValidation } from '../user/user.validation'
-import { checkAuth } from '../../middlewares/checkAuth'
-import { USER_ROLES } from '../../../enums/user'
+const router = express.Router();
 
-const router = express.Router()
+// ================= AUTH =================
 
-router.route("/register").post(validateRequest(AuthValidation.createRegisterZodSchema), AuthController.registerUser)
-router.route("/login").post(validateRequest(AuthValidation.createLoginZodSchema), AuthController.loginUser)
+// Register
+router.post(
+  "/register",
+  validateRequest(AuthValidation.createRegisterZodSchema),
+  AuthController.registerUser
+);
 
-router.post('/refresh-token', AuthController.refreshToken)
+// Login
+router.post(
+  "/login",
+  validateRequest(AuthValidation.createLoginZodSchema),
+  AuthController.loginUser
+);
 
+// Refresh Token
+router.post("/refresh-token", AuthController.refreshToken);
 
-router.post('/logout', checkAuth(USER_ROLES.USER, USER_ROLES.ADMIN), AuthController.logout )
+// Logout
+router.post(
+  "/logout",
+  checkAuth(USER_ROLES.USER, USER_ROLES.ADMIN),
+  AuthController.logout
+);
 
+// ================= OTP =================
 
-export const AuthRoutes = router 
+// Send OTP (verify or reset password)
+router.post("/send-otp", AuthController.sendOtp);
+
+// Verify Account
+router.post("/verify-user", AuthController.userVerify);
+
+// Forget Password
+router.post("/forget-password", AuthController.forgetPassword);
+
+export const AuthRoutes = router;

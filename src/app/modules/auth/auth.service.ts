@@ -1,124 +1,296 @@
-import brcypt from "bcrypt";
-import { StatusCodes } from "http-status-codes";    
-import { JwtPayload, Secret } from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import { StatusCodes } from "http-status-codes";
+import { Secret } from "jsonwebtoken";
 import config from "../../../config";
 import ApiError from "../../../errors/ApiErrors";
 import { jwtHelper } from "../../../helpers/jwtHelper";
 import { User } from "../user/user.model";
-import { ILoginData } from "../../../types/auth";
 import generateOTP from "../../../utils/generateOTP";
-import cryptoToken from "../../../utils/cryptoToken";
 import { RegisterPayload, LoginPayload } from "../user/user.validation";
 import { STATUS } from "../../../enums/user";
 import { emailTemplate } from "../../../shared/emailTemplate";
 import { emailHelper } from "../../../helpers/emailHelper";
 
 
+// =====================================================
+// REGISTER
+// =====================================================
 
-// Register 
+const registerToDB = async (payload: RegisterPayload) => {
+  const { email } = payload;
 
-const registerToDB = async (payload:RegisterPayload ) => {
-    const {email} = payload
+  const isExistUser = await User.findOne({ email });
+  if (isExistUser) {
+    throw new ApiError(StatusCodes.CONFLICT, "User already exists with this email");
+  }
 
-    const isExistUser = await User.findOne({email})
-    if(isExistUser) {
-        throw new ApiError(StatusCodes.CONFLICT, "User already exists with this email")
+  const user = await User.create(payload);
+
+  const otp = generateOTP();
+
+  await User.updateOne(
+    { email },
+    {
+      $set: {
+        "authentication.oneTimeCode": otp,
+        "authentication.expiredAt": new Date(Date.now() + 5 * 60 * 1000),
+        "authentication.isResetPassword": false,
+      },
     }
+  );
 
-    const user = (await User.create(payload))    
-
-    const otp = generateOTP()
-
-await User.findOneAndUpdate({email: payload.email}, {
-    authentication: {
-        oneTimeCode: otp,
-        expiredAt: new Date(Date.now() + 5 * 60 * 1000)
-
-    }
-})
-
-const emailData = emailTemplate.createAccount( {
+  const emailData = emailTemplate.createAccount({
     name: user.name,
     email: user.email,
-    otp
-})
-    
+    otp,
+  });
 
-emailHelper.sendEmail({
+  await emailHelper.sendEmail({
     to: user.email,
     subject: "Verify your account",
-    html: emailData.html
-})
-    const userData = {
-        _id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role
+    html: emailData.html,
+  });
+
+  return {
+    message: "User registered successfully. Please verify your email.",
+    user: {
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    },
+  };
+};
+
+
+// =====================================================
+// LOGIN
+// =====================================================
+
+const logintoDB = async (payload: LoginPayload) => {
+  const { email, password } = payload;
+
+  const user = await User.findOne({ email }).select("+password");
+  if (!user) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "User not found with this email");
+  }
+
+  if (!user.verified) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Verify your account before login");
+  }
+
+  if (user.status === STATUS.INACTIVE) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "You are an inactive user");
+  }
+
+  const isPasswordMatched = await bcrypt.compare(password, user.password);
+  if (!isPasswordMatched) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "Invalid credentials");
+  }
+
+  const userData = {
+    _id: user._id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  };
+
+  const accessToken = jwtHelper.createToken(
+    userData,
+    config.jwt.jwt_secret as Secret,
+    config.jwt.jwt_expire_in as string
+  );
+
+  const refreshToken = jwtHelper.createToken(
+    userData,
+    config.jwt.jwt_refresh_secret as Secret,
+    config.jwt.jwt_refresh_expire_in as string
+  );
+
+  return {
+    accessToken,
+    refreshToken,
+    user: userData,
+  };
+};
+
+
+// =====================================================
+// REFRESH TOKEN
+// =====================================================
+
+const refreshToken = async (data: { refreshToken: string }) => {
+  const { refreshToken } = data;
+
+  if (!refreshToken) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Refresh token is required");
+  }
+
+  const newAccessToken =
+    await jwtHelper.createNewAccessTokenWithRefeshToken(refreshToken);
+
+  return {
+    accessToken: newAccessToken,
+  };
+};
+
+
+// =====================================================
+// SEND OTP
+// =====================================================
+
+const OTP_EXPIRE_MINUTES = 2;
+
+type SendOtpPayload = {
+  email: string;
+  isResetPassword?: boolean;
+};
+
+const sendOtp = async ({ email, isResetPassword = false }: SendOtpPayload) => {
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "User not found");
+  }
+
+  if (!isResetPassword && user.verified) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "User already verified");
+  }
+
+  const otp = generateOTP();
+  const expiredAt = new Date(Date.now() + OTP_EXPIRE_MINUTES * 60 * 1000);
+
+  await User.updateOne(
+    { email },
+    {
+      $set: {
+        "authentication.oneTimeCode": otp,
+        "authentication.expiredAt": expiredAt,
+        "authentication.isResetPassword": isResetPassword,
+      },
     }
-    return { message: "User registered successfully, please verify your email", user: userData }
-}
+  );
+
+  const emailData = emailTemplate.createAccount({
+    name: user.name,
+    email: user.email,
+    otp,
+  });
+
+  await emailHelper.sendEmail({
+    to: user.email,
+    subject: "OTP Verification",
+    html: emailData.html,
+  });
+
+  return { message: "OTP sent successfully" };
+};
 
 
+// =====================================================
+// VERIFY USER
+// =====================================================
 
-export const logintoDB = async (payload: LoginPayload) => {
-    const {email, password} = payload
-    const user = await User.findOne({email}).select("+password")
-    if(!user) {
-        throw new ApiError(StatusCodes.NOT_FOUND, "User not found with this email")
+const userVerify = async (payload: { email: string; otp: number | string }) => {
+  const { email, otp } = payload;
+
+  const user = await User.findOne({ email }).select("+authentication");
+  if (!user) throw new ApiError(StatusCodes.NOT_FOUND, "User not found");
+
+  if (user.verified) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "User already verified");
+  }
+
+  const savedOtp = user.authentication?.oneTimeCode;
+  const expiredAt = user.authentication?.expiredAt;
+
+  if (!savedOtp || !expiredAt) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "OTP expired or invalid");
+  }
+
+  if (expiredAt.getTime() < Date.now()) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "OTP expired or invalid");
+  }
+
+  if (String(savedOtp) !== String(otp)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Wrong OTP");
+  }
+
+  await User.updateOne(
+    { email },
+    {
+      $set: { verified: true },
+      $unset: {
+        "authentication.oneTimeCode": 1,
+        "authentication.expiredAt": 1,
+        "authentication.isResetPassword": 1,
+      },
     }
+  );
 
-if(!user.verified) {
-    throw new ApiError( StatusCodes.BAD_REQUEST, "Vefify your account and login")
-}
-
-
-if(user.status === STATUS.INACTIVE) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "You are inactive user")
-}
+  return { message: "OTP verified successfully" };
+};
 
 
-    const isPasswordMathched = await brcypt.compare(password, user.password)
-    if(!isPasswordMathched) {
-        throw new ApiError(StatusCodes.UNAUTHORIZED, "Invalid credentials")
+// =====================================================
+// FORGET PASSWORD
+// =====================================================
+
+const forgetPassword = async (payload: {
+  email: string;
+  otp: number | string;
+  password: string;
+}) => {
+  const { email, otp, password } = payload;
+
+  const user = await User.findOne({ email }).select("+password +authentication");
+  if (!user) throw new ApiError(StatusCodes.NOT_FOUND, "User not found");
+
+  const savedOtp = user.authentication?.oneTimeCode;
+  const expiredAt = user.authentication?.expiredAt;
+  const isResetPassword = user.authentication?.isResetPassword;
+
+  if (!savedOtp || !expiredAt || !isResetPassword) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "OTP expired or invalid");
+  }
+
+  if (expiredAt.getTime() < Date.now()) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "OTP expired or invalid");
+  }
+
+  if (String(savedOtp) !== String(otp)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Wrong OTP");
+  }
+
+  const hashedPassword = await bcrypt.hash(
+    password,
+    Number(config.bcrypt_salt_rounds)
+  );
+
+  await User.updateOne(
+    { email },
+    {
+      $set: { password: hashedPassword },
+      $unset: {
+        "authentication.oneTimeCode": 1,
+        "authentication.expiredAt": 1,
+        "authentication.isResetPassword": 1,
+      },
     }
+  );
 
-    const userData = {
-        _id: user._id,
-        email: user.email,
-        name:user.name,
-        role:user.role
-    }
-
-    const accessToken = jwtHelper.createToken(userData, config.jwt.jwt_secret as Secret, config.jwt.jwt_expire_in as string)
-    const refeshToken = jwtHelper.createToken(userData, config.jwt.jwt_refresh_secret as Secret, config.jwt.jwt_refresh_expire_in as string )
+  return { message: "Password reset successfully" };
+};
 
 
-        
+// =====================================================
+// EXPORT
+// =====================================================
 
-    return {
-        accessToken,
-        refeshToken,
-        user:userData
-    }
-}
-
-
-const refreshToken = async (data : { refreshToken: string }) => { 
-    const {refreshToken} = data
-    const accessToken = await jwtHelper.createNewAccessTokenWithRefeshToken(refreshToken)
-    return accessToken  
-}
-
-
-const logout = async (data: {refreshToken: string}) => {
-    const {refreshToken} = data
-
-    // const decoded = jwtHelper.verifyToken(refreshToken, config.jwt.jwt_refresh_secret as Secret) as JwtPayload
-
-}
-
-export const AuthService = { 
-    registerToDB,
-    logintoDB,
-    refreshToken
-}
+export const AuthService = {
+  registerToDB,
+  logintoDB,
+  refreshToken,
+  sendOtp,
+  userVerify,
+  forgetPassword,
+};
