@@ -3,7 +3,6 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LogIn } from "lucide-react";
-
 import { loginSchema, type LoginFormValues } from "../auth.validators";
 import { useAuth } from "../auth.store";
 import FormInput from "../../../shared/components/FormInput";
@@ -11,9 +10,9 @@ import Button from "../../../shared/components/Button";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation() as any;
-  const [loading, setLoading] = useState(false);
+  const navigate  = useNavigate();
+  const location  = useLocation() as any;
+  const [loading,   setLoading]   = useState(false);
   const [serverErr, setServerErr] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
@@ -24,14 +23,12 @@ export default function LoginPage() {
       setServerErr(null);
       const user = await login(values);
       const from = location.state?.from;
-      // role-based redirect
-      if (from) {
-        navigate(from, { replace: true });
-      } else {
-        navigate(user.role === "ADMIN" ? "/admin/dashboard" : "/user/dashboard", { replace: true });
-      }
+      navigate(
+        from ?? (user.role === "ADMIN" ? "/admin/dashboard" : "/user/dashboard"),
+        { replace: true }
+      );
     } catch (err: any) {
-      setServerErr(err?.response?.data?.message || "Login failed. Please check your credentials.");
+      setServerErr(err?.response?.data?.message || "Login failed.");
     } finally {
       setLoading(false);
     }
@@ -52,23 +49,14 @@ export default function LoginPage() {
       )}
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormInput
-          label="Email address"
-          type="email"
-          placeholder="you@example.com"
-          {...form.register("email")}
-          error={form.formState.errors.email?.message}
-        />
+        <FormInput label="Email address" type="email" placeholder="you@example.com" {...form.register("email")} error={form.formState.errors.email?.message} />
+
         <div>
-          <FormInput
-            label="Password"
-            type="password"
-            placeholder="Min 8 characters"
-            {...form.register("password")}
-            error={form.formState.errors.password?.message}
-          />
-          <div className="text-right mt-1">
-            <a href="#" className="text-xs text-indigo-600 hover:underline">Forgot password?</a>
+          <FormInput label="Password" type="password" placeholder="Min 8 characters" {...form.register("password")} error={form.formState.errors.password?.message} />
+          <div className="text-right mt-1.5">
+            <Link to="/forgot-password" className="text-xs text-indigo-600 hover:underline font-medium">
+              Forgot password?
+            </Link>
           </div>
         </div>
 
@@ -78,11 +66,9 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <div className="mt-6 text-center text-sm text-slate-500">
+      <div className="mt-5 text-center text-sm text-slate-500">
         Don't have an account?{" "}
-        <Link to="/register" className="text-indigo-600 font-semibold hover:underline">
-          Create one
-        </Link>
+        <Link to="/register" className="text-indigo-600 font-semibold hover:underline">Create one</Link>
       </div>
     </div>
   );

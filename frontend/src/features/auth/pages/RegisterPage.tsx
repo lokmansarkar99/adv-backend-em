@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { UserPlus, CheckCircle2 } from "lucide-react";
-
+import { UserPlus } from "lucide-react";
 import { registerSchema, type RegisterFormValues } from "../auth.validators";
 import { useAuth } from "../auth.store";
 import FormInput from "../../../shared/components/FormInput";
@@ -11,8 +10,8 @@ import Button from "../../../shared/components/Button";
 
 export default function RegisterPage() {
   const { register: registerUser } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [serverMsg, setServerMsg] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const [loading,   setLoading]   = useState(false);
   const [serverErr, setServerErr] = useState<string | null>(null);
 
   const form = useForm<RegisterFormValues>({
@@ -24,34 +23,15 @@ export default function RegisterPage() {
     try {
       setLoading(true);
       setServerErr(null);
-      const res = await registerUser(values);
-      setServerMsg(res.message);
-      form.reset({ name: "", email: "", password: "", role: "USER" });
+      await registerUser(values);
+      // Go straight to verify page with the email pre-filled
+      navigate("/verify-email", { state: { email: values.email } });
     } catch (err: any) {
-      setServerMsg(null);
-      setServerErr(err?.response?.data?.message || "Registration failed. Please try again.");
+      setServerErr(err?.response?.data?.message || "Registration failed.");
     } finally {
       setLoading(false);
     }
   };
-
-  if (serverMsg) {
-    return (
-      <div className="py-6 text-center">
-        <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-8 h-8 text-green-500" />
-        </div>
-        <h3 className="text-xl font-bold text-slate-800 mb-2">Check your email!</h3>
-        <p className="text-sm text-slate-500 mb-6">{serverMsg}</p>
-        <Link
-          to="/login"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
-        >
-          Go to Login
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -68,26 +48,9 @@ export default function RegisterPage() {
       )}
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormInput
-          label="Full name"
-          placeholder="John Doe"
-          {...form.register("name")}
-          error={form.formState.errors.name?.message}
-        />
-        <FormInput
-          label="Email address"
-          type="email"
-          placeholder="you@example.com"
-          {...form.register("email")}
-          error={form.formState.errors.email?.message}
-        />
-        <FormInput
-          label="Password"
-          type="password"
-          placeholder="Min 8 characters"
-          {...form.register("password")}
-          error={form.formState.errors.password?.message}
-        />
+        <FormInput label="Full name" placeholder="John Doe" {...form.register("name")} error={form.formState.errors.name?.message} />
+        <FormInput label="Email address" type="email" placeholder="you@example.com" {...form.register("email")} error={form.formState.errors.email?.message} />
+        <FormInput label="Password" type="password" placeholder="Min 8 characters" {...form.register("password")} error={form.formState.errors.password?.message} />
 
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-slate-700">Account type</label>

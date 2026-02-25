@@ -1,47 +1,61 @@
 import express from "express";
+
 import { AuthController } from "./auth.controller";
 import validateRequest from "../../middlewares/validateRequest";
-import { AuthValidation } from "../user/user.validation";
+import { AuthValidation } from "./auth.validation";
+
 import { checkAuth } from "../../middlewares/checkAuth";
 import { USER_ROLES } from "../../../enums/user";
 
 const router = express.Router();
 
 // ================= AUTH =================
+router
+  .route("/register")
+  .post(
+    validateRequest(AuthValidation.createRegisterZodSchema),
+    AuthController.registerUser
+  );
 
-// Register
-router.post(
-  "/register",
-  validateRequest(AuthValidation.createRegisterZodSchema),
-  AuthController.registerUser
-);
+router
+  .route("/login")
+  .post(
+    validateRequest(AuthValidation.createLoginZodSchema),
+    AuthController.loginUser
+  );
 
-// Login
-router.post(
-  "/login",
-  validateRequest(AuthValidation.createLoginZodSchema),
-  AuthController.loginUser
-);
+router
+  .route("/refresh-token")
+  .post(
+    validateRequest(AuthValidation.createRefreshTokenZodSchema),
+    AuthController.refreshToken
+  );
 
-// Refresh Token
-router.post("/refresh-token", AuthController.refreshToken);
-
-// Logout
-router.post(
-  "/logout",
-  checkAuth(USER_ROLES.USER, USER_ROLES.ADMIN),
-  AuthController.logout
-);
+router
+  .route("/logout")
+  .post(checkAuth(USER_ROLES.USER, USER_ROLES.ADMIN), AuthController.logout);
 
 // ================= OTP =================
+router
+  .route("/send-otp")
+  .post(
+    validateRequest(AuthValidation.createSendOtpZodSchema),
+    AuthController.sendOtp
+  );
 
-// Send OTP (verify or reset password)
-router.post("/send-otp", AuthController.sendOtp);
+router
+  .route("/verify-user")
+  .post(
+    validateRequest(AuthValidation.createVerifyUserZodSchema),
+    AuthController.userVerify
+  );
 
-// Verify Account
-router.post("/verify-user", AuthController.userVerify);
-
-// Forget Password
-router.post("/forget-password", AuthController.forgetPassword);
+// OTP based password reset
+router
+  .route("/reset-password")
+  .post(
+    validateRequest(AuthValidation.createResetPasswordWithOtpZodSchema),
+    AuthController.resetPassword
+  );
 
 export const AuthRoutes = router;

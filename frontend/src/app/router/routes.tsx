@@ -1,33 +1,77 @@
 import { createBrowserRouter } from "react-router-dom";
 
-import AuthLayout from "../layouts/AuthLayout";
-import AppLayout from "../layouts/AppLayout";
+import AuthLayout    from "../layouts/AuthLayout";
+import PublicLayout  from "../layouts/PublicLayout";
+import UserLayout    from "../layouts/UserLayout";
+import AdminLayout   from "../layouts/AdminLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
-import HomePage from "../../pages/HomePage";
-import DashboardPage from "../../pages/DashboardPage";
-import NotFoundPage from "../../pages/NotFoundPage";
-
-import LoginPage from "../../pages/LoginPage";
-import RegisterPage from "../../pages/RegisterPage";
+import HomePage           from "../../pages/HomePage";
+import NotFoundPage       from "../../pages/NotFoundPage";
+import LoginPage          from "../../features/auth/pages/LoginPage";
+import RegisterPage       from "../../features/auth/pages/RegisterPage";
+import VerifyUserPage     from "../../features/auth/pages/VerifyUserPage";
+import ForgotPasswordPage from "../../features/auth/pages/ForgotPasswordPage";
+import ResetPasswordPage  from "../../features/auth/pages/ResetPasswordPage";
+import UserDashboard      from "../../pages/user/DashboardPage";
+import UserOrders         from "../../pages/user/OrderPage";
+import UserProfile        from "../../pages/user/ProfilePage";
+import AdminDashboard     from "../../pages/admin/DashboardPage";
 
 export const router = createBrowserRouter([
+  /* ── Public ──────────────────────────────── */
+  {
+    element: <PublicLayout />,
+    children: [
+      { path: "/", element: <HomePage /> },
+    ],
+  },
+
+  /* ── Auth (centered card) ────────────────── */
   {
     element: <AuthLayout />,
     children: [
-      { path: "/", element: <HomePage /> },
-      { path: "/login", element: <LoginPage /> },
-      { path: "/register", element: <RegisterPage /> },
+      { path: "/login",            element: <LoginPage /> },
+      { path: "/register",         element: <RegisterPage /> },
+      { path: "/verify-email",     element: <VerifyUserPage /> },       // POST /verify-user
+      { path: "/forgot-password",  element: <ForgotPasswordPage /> },   // POST /send-otp {isResetPassword:true}
+      { path: "/reset-password",   element: <ResetPasswordPage /> },    // POST /reset-password
     ],
   },
+
+  /* ── User dashboard ──────────────────────── */
   {
-    element: <ProtectedRoute />,
+    element: <ProtectedRoute allowedRole="USER" />,
     children: [
       {
-        element: <AppLayout />,
-        children: [{ path: "/dashboard", element: <DashboardPage /> }],
+        element: <UserLayout />,
+        children: [
+          { path: "/user/dashboard", element: <UserDashboard /> },
+          { path: "/user/orders",    element: <UserOrders /> },
+          { path: "/user/profile",   element: <UserProfile /> },
+          { path: "/user/settings",  element: <div className="p-4 text-slate-400">Settings coming soon</div> },
+        ],
       },
     ],
   },
+
+  /* ── Admin dashboard ─────────────────────── */
+  {
+    element: <ProtectedRoute allowedRole="ADMIN" />,
+    children: [
+      {
+        element: <AdminLayout />,
+        children: [
+          { path: "/admin/dashboard", element: <AdminDashboard /> },
+          { path: "/admin/users",     element: <div className="p-4 text-slate-400">Users coming soon</div> },
+          { path: "/admin/products",  element: <div className="p-4 text-slate-400">Products coming soon</div> },
+          { path: "/admin/orders",    element: <div className="p-4 text-slate-400">Orders coming soon</div> },
+          { path: "/admin/analytics", element: <div className="p-4 text-slate-400">Analytics coming soon</div> },
+          { path: "/admin/settings",  element: <div className="p-4 text-slate-400">Settings coming soon</div> },
+        ],
+      },
+    ],
+  },
+
   { path: "*", element: <NotFoundPage /> },
 ]);
