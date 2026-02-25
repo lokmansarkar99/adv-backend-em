@@ -1,11 +1,11 @@
 import {Schema, model} from "mongoose"
-import { IUser } from "./user.interface"
+import { IUser , UserModal} from "./user.interface"
 import { STATUS, USER_ROLES } from "../../../enums/user"
 import  bcrypt  from 'bcrypt';
 import config from "../../../config";
 
 
-const userSchema = new Schema<IUser>(
+const userSchema = new Schema<IUser, UserModal>(
   {
   name: {
     type: String,
@@ -32,6 +32,7 @@ const userSchema = new Schema<IUser>(
     default: ""
   },
 
+isDeleted:    { type: Boolean, default: false },
   password: {
     type: String,
     required: true,
@@ -79,6 +80,28 @@ const userSchema = new Schema<IUser>(
 
 
 
+// exist user check
+
+userSchema.statics.isExistUserById = async (id:string) =>  {
+  const isExist = User.findById(id)
+  return isExist
+}
+
+userSchema.statics.isExistUserByEmail = async (email: string) => {
+  const isExist  = User.findOne({email}) 
+  return isExist
+}
+
+
+userSchema.statics.isAccountCreated = async (id: string) => {
+  const isExist = User.findById({id}) 
+  return isExist
+}
+
+userSchema.statics.isMatchPassword = async (pasword: string, hashPassword: string) => {
+  return await bcrypt.compare(pasword,  hashPassword)
+}
+
 // Middlewares
 
 userSchema.pre("save", async function () {
@@ -102,4 +125,4 @@ userSchema.pre("save", async function () {
 
 
 
-export const User = model<IUser>("User", userSchema)
+export const User = model<IUser, UserModal>("User", userSchema)

@@ -1,41 +1,41 @@
-import {z} from "zod"
-import { USER_ROLES } from "../../../enums/user"
+import { z } from 'zod';
+import { USER_ROLES, STATUS } from '../../../enums/user';
+import { checkValidID } from '../../../shared/chackValid';
 
+// ── Update my profile ──────────────────────────────
+const updateMyProfileSchema = z.object({
+  body: z.object({
+    name:  z.string().min(3, 'Name must be at least 3 characters').optional(),
+    email: z.string().email('Invalid email').optional(),
+    // profileImage comes from multer → file, NOT body
+  }),
+});
 
-const createRegisterZodSchema = z.object({
-    body: z.object({
-        name: z.string().min(3, "Name must be at least 3 characters long"),
-        email: z.string().email("Invalid email address"),
-        password: z.string().min(8, "Password must be at least 8 characters long"),
-        role: z.enum([USER_ROLES.ADMIN, USER_ROLES.USER]).default(USER_ROLES.USER),
-        profileImage:z.string().optional(),
+// ── Admin: change user status ──────────────────────
+const updateUserStatusSchema = z.object({
+  params: z.object({
+    id: checkValidID('Invalid user ID'),
+  }),
+  body: z.object({
+    status: z.enum([STATUS.ACTIVE, STATUS.INACTIVE], {
+      message: 'Status must be ACTIVE or INACTIVE',
+    }),
+  }),
+});
 
-        
+// ── Admin: get user by id ──────────────────────────
+const getUserByIdSchema = z.object({
+  params: z.object({
+    id: checkValidID('Invalid user ID'),
+  }),
+});
 
-    })
-})
+export const UserValidation = {
+  updateMyProfileSchema,
+  updateUserStatusSchema,
+  getUserByIdSchema,
+};
 
-
-const createLoginZodSchema = z.object({
-    body: z.object({
-        email: z.string({message: "Email is required"}).email("Invalid email address"),
-        password: z.string({ message: "Password is required" }).min(8, "Password must be at least 8 characters long")
-    })
-})
-
-
-
-export const AuthValidation = {
-    createRegisterZodSchema,
-    createLoginZodSchema
-}
-
-  type RegisterPayload = z.infer<
-  typeof createRegisterZodSchema
->["body"];
-
-type LoginPayload = z.infer<
-  typeof createLoginZodSchema
->["body"];
-
-export type {RegisterPayload, LoginPayload}
+// Payload types
+export type UpdateMyProfilePayload = z.infer<typeof updateMyProfileSchema>['body'];
+export type UpdateUserStatusPayload = z.infer<typeof updateUserStatusSchema>['body'];
