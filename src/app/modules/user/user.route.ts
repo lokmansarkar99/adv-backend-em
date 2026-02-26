@@ -6,9 +6,8 @@ import { checkAuth } from "../../middlewares/checkAuth";
 import { USER_ROLES } from "../../../enums/user";
 import { userController } from "./user.controller";
 import validateRequest from "../../middlewares/validateRequest";
-import { UserValidation } from "./user.validation";
 import fileUploadHandler from "../../middlewares/fileUploadHandler";
-import { AuthController } from "../auth/auth.controller";
+import { UserValidation } from "./user.validation";
 
 router.get(
   "/profile",
@@ -31,5 +30,7 @@ router
 
 
   router.route("/users").get(checkAuth(USER_ROLES.ADMIN), userController.allUsers)
+
+  router.route("/users/:id").patch(checkAuth(USER_ROLES.ADMIN), validateRequest(UserValidation.updateUserStatusSchema), userController.updateUserStatus)
 
 export const UserRoutes = router;

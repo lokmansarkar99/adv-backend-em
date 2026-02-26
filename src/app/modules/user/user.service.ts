@@ -94,8 +94,25 @@ const getAllUsers = async (query: Record<string, unknown>) => {
 }
 
 
+
+
+// Admin - Update User Status 
+const updateUserStatus = async (userId: string, payload: UpdateUserStatusPayload ) => {
+
+    const user = await User.findById(userId)
+    if(!user || user.isDeleted) {
+        throw new ApiError (StatusCodes.NOT_FOUND, 'User not found')
+    } 
+
+    user.status = payload.status as STATUS
+    await user.save()
+
+    return { message: `User status updated to ${payload.status}`}
+
+}
 export const UserService = {
     getMyProfile,
     updateMyProfile,
-    getAllUsers
+    getAllUsers,
+    updateUserStatus
 }
