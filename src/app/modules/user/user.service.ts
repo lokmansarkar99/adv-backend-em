@@ -57,3 +57,35 @@ const updateMyProfile = async (userId:string, payload: UpdateMyProfilePayload, f
 }
 
 
+
+// ADMIN : Get All Users
+
+const getAllUsers = async (query: Record<string, unknown>) => {
+        const page = Number(query.page) || 1
+        const limit = Number(query.limit) || 10 
+       const skip = (page - 1) * limit;
+
+
+       const filter: Record<string, unknown> = {isDeleted: false}
+
+       if(query.role) filter.role = query.role
+       if(query.search) {
+        filter.$or = [
+            {email: { 
+                $regex: query.search, $options:  "i"
+            }}
+        ]
+       }
+
+       const [users, total] = await Promise.all([
+        User.find(filter).skip(skip).limit(limit).lean(),
+        User.countDocuments(filter)
+       ])
+}
+
+
+export const UserService = {
+    getMyProfile,
+    updateMyProfile,
+    getAllUsers
+}

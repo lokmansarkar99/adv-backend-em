@@ -1,106 +1,114 @@
-import { Request } from "express"
-import fs from 'fs'
-import { StatusCodes } from "http-status-codes"
-import multer, {FileFilterCallback} from "multer"
-import path from "path"
-import ApiError from "../../errors/ApiErrors"
+import { Request } from "express";
+import fs from "fs";
+import { StatusCodes } from "http-status-codes";
+import multer, { FileFilterCallback } from "multer";
+import path from "path";
+import ApiError from "../../errors/ApiErrors";
 
-const fileUploadHandler = async () => {
-    // create upload folder
-    const baseUploadDir = path.join(process.cwd(), 'uploads' ) 
-    if(!fs.existsSync(baseUploadDir)) {
-        fs.mkdirSync(baseUploadDir)
+const fileUploadHandler = () => {
+  // Base upload folder
+  const baseUploadDir = path.join(process.cwd(), "uploads");
+
+  if (!fs.existsSync(baseUploadDir)) {
+    fs.mkdirSync(baseUploadDir);
+  }
+
+  // Helper to create folder if not exists
+  const createDir = (dirPath: string) => {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath);
+    }
+  };
+
+  // ================= STORAGE =================
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      let uploadDir = "";
+
+      // All image field names
+      const imageFields = ["image", "profileImage", "productImage"];
+
+      if (imageFields.includes(file.fieldname)) {
+        uploadDir = path.join(baseUploadDir, "image");
+      } else if (file.fieldname === "media") {
+        uploadDir = path.join(baseUploadDir, "media");
+      } else if (file.fieldname === "doc") {
+        uploadDir = path.join(baseUploadDir, "doc");
+      } else {
+        return cb(
+          new ApiError(StatusCodes.BAD_REQUEST, "File field is not supported"),
+          ""
+        );
+      }
+
+      createDir(uploadDir);
+      cb(null, uploadDir);
+    },
+
+    filename: (req, file, cb) => {
+      const fileExt = path.extname(file.originalname);
+      const fileName =
+        file.originalname
+          .replace(fileExt, "")
+          .toLowerCase()
+          .split(".")
+          .join("-") +
+        "-" +
+        Date.now();
+
+      cb(null, fileName + fileExt);
+    },
+  });
+
+  // ================= FILE FILTER =================
+  const fileFilter = (
+    req: Request,
+    file: Express.Multer.File,
+    cb: FileFilterCallback
+  ) => {
+    const mime = file.mimetype;
+
+    // Image validation
+    if (mime.startsWith("image/")) {
+      if (["image/jpeg", "image/png", "image/jpg"].includes(mime)) {
+        return cb(null, true);
+      }
+      return cb(
+        new ApiError(
+          StatusCodes.BAD_REQUEST,
+          "Only .jpeg, .jpg, or .png files are supported"
+        )
+      );
     }
 
-    const createDir = (dirPath: string) => {
-        if(!fs.existsSync(dirPath)) {
-            fs.mkdirSync(dirPath)
-        }
-
+    // Video & Audio validation
+    if (mime === "video/mp4" || mime === "audio/mpeg") {
+      return cb(null, true);
     }
 
-    //create filename 
-    const storage = multer.diskStorage({
-        destination: (req, file, cb) => {
-            let uploadDir;
-            switch(file.fieldname){
-                case'image':
-                uploadDir = path.join(baseUploadDir, 'image')
-                break;
-                case "media": 
-                uploadDir = path.join(baseUploadDir, 'media')
-                break;
-                case 'doc':
-                uploadDir = path.join(baseUploadDir, 'doc')
-                    break;
-                default:
-                    throw new ApiError(StatusCodes.BAD_REQUEST, "File is not supported")
-            }
-            createDir(uploadDir)
-            cb(null, uploadDir)
-        },
-        filename: (req, file, cb) => {
-            const fileExt = path.extname(file.originalname)
-            const fileName = file.originalname.replace(fileExt, '').toLowerCase().split(".").join('-') + '-' + Date.now()
-            cb(null, fileName + fileExt)
-        }
-    });
-    
-    // file filter
-const filterFilter = (req: Request, file: any , cb: FileFilterCallback) => {
-    if(file.fieldname === 'image') {
-        if(
-            file.mimetype === 'image/jpeg' ||
-            file.mimetype === 'image/png'  ||
-            file.mimetype === 'image/jpg' 
-        ) {
-            cb(null, true)
-
-        } else{
-            cb(new ApiError(StatusCodes.BAD_REQUEST, "Only .jpeg, .png, or .jpg file is supported"))
-
-        }
-
-    }  else if( file.fieldName === "media") {
-        if(file.mimetype === 'mp4' || file.mimetype === 'audio/mpeg')  {
-
-
-            cb(null, true)
-        }
-        else{
-            cb( new ApiError(StatusCodes.BAD_REQUEST, " Only .mp4 or mp3 files supported"))
-        }
+    // PDF validation
+    if (mime === "application/pdf") {
+      return cb(null, true);
     }
 
-    else if(file.fieldName === "doc") {
-        if(file.mimetype === 'application/pdf') {
-            cb(null, true)
-        }
-        else { cb(new ApiError(StatusCodes.BAD_REQUEST, "Only pdf supported"))}
-     }
+    return cb(
+      new ApiError(StatusCodes.BAD_REQUEST, "This file type is not supported")
+    );
+  };
 
-     else {
-        cb( new ApiError(StatusCodes.BAD_GATEWAY, "This file is not supported"))
-     }
-}
-    
-    
+  // ================= MULTER CONFIG =================
+  const upload = multer({
+    storage,
+    fileFilter,
+  }).fields([
+    { name: "profileImage", maxCount: 1 },
+    { name: "productImage", maxCount: 5 },
+    { name: "image", maxCount: 3 },
+    { name: "media", maxCount: 3 },
+    { name: "doc", maxCount: 3 },
+  ]);
 
-const upload = multer({
-    storage: storage,
-    fileFilter: filterFilter,
-
-}).fields([
-    {name: 'profileImage', maxCount: 1},
-    {name: 'productImage', maxCount: 5},
-    {name: 'image', maxCount: 3},
-    {name: 'media', maxCount: 3},
-    {name: 'doc', maxCount: 3}
-])
-return upload
-
-
-}
-
+  return upload;
+};
 
 export default fileUploadHandler;
