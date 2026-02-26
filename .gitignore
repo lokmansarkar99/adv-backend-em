@@ -10,3 +10,7 @@ winston-logs/
 winston/
 winston/*.log
 winston/*.log.*
+
+/uplodads
+uploads/
+uploads/*

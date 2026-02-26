@@ -8,6 +8,7 @@ import { userController } from "./user.controller";
 import validateRequest from "../../middlewares/validateRequest";
 import { UserValidation } from "./user.validation";
 import fileUploadHandler from "../../middlewares/fileUploadHandler";
+import { AuthController } from "../auth/auth.controller";
 
 router.get(
   "/profile",
@@ -27,5 +28,8 @@ router
     validateRequest(UserValidation.updateMyProfileSchema),
     userController.updateProfile,
   );
+
+
+  router.route("/users").get(checkAuth(USER_ROLES.ADMIN), userController.allUsers)
 
 export const UserRoutes = router;

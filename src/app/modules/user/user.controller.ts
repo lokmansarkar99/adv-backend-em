@@ -3,6 +3,7 @@ import catchAsync from "../../../shared/catchAsync";
 import { UserService } from "./user.service";
 import sendResponse from "../../../shared/sendResponse";
 import { StatusCodes } from "http-status-codes";
+import { User } from "./user.model";
 export const getMe = (req: Request, res: Response) => {
 
     console.log(req.user)
@@ -45,10 +46,25 @@ const updateProfile = catchAsync(async (req: Request, res: Response) => {
 
 
 
+const allUsers = catchAsync(async (req:Request, res: Response) => {
+
+    const result = await UserService.getAllUsers(req.query)
+
+      console.log(result)
+    sendResponse(res, {
+      success: true,
+      message: "All user fetched successfullyly",
+      statusCode: StatusCodes.OK,
+      data: result
+    })
+})
+
 export const userController = {  
     getMe,
     getMyProfile,
-    updateProfile
+    updateProfile,
+    allUsers
+
 }
 
 
