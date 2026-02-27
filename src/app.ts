@@ -41,6 +41,7 @@ app.get("/", (_req:Request, res:Response) => {
 
 // API Routes
 app.use("/api/v1", router)
+app.use("/api/v1/uploads", express.static('uploads'))
 
 // 404 Handler
 

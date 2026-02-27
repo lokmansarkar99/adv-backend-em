@@ -18,12 +18,18 @@ import UserOrders         from "../../pages/user/OrderPage";
 import UserProfile        from "../../pages/user/ProfilePage";
 import AdminDashboard     from "../../pages/admin/DashboardPage";
 
+import ProductsPage       from "../../features/products/pages/ProductsPage";
+import ProductDetailPage  from "../../features/products/pages/ProductDetailPage";
+import AdminProductsPage  from "../../features/products/admin/AdminProductsPage";
+
 export const router = createBrowserRouter([
   /* ── Public ──────────────────────────────── */
   {
     element: <PublicLayout />,
     children: [
       { path: "/", element: <HomePage /> },
+      { path: "/products",          element: <ProductsPage /> },
+{ path: "/products/:id",      element: <ProductDetailPage /> },
     ],
   },
 
@@ -68,6 +74,7 @@ export const router = createBrowserRouter([
           { path: "/admin/orders",    element: <div className="p-4 text-slate-400">Orders coming soon</div> },
           { path: "/admin/analytics", element: <div className="p-4 text-slate-400">Analytics coming soon</div> },
           { path: "/admin/settings",  element: <div className="p-4 text-slate-400">Settings coming soon</div> },
+          { path: "/admin/products",    element: <AdminProductsPage /> },
         ],
       },
     ],
