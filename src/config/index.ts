@@ -1,5 +1,7 @@
+import { strip } from "colors"
 import dotenv from "dotenv"
 import path from "path"
+import { success } from "zod"
 
 dotenv.config({path: path.join(process.cwd(), ".env") })
 
@@ -32,6 +34,13 @@ export default {
     rate_limit: {
         limit: process.env.EXPRESS_RATE_LIMIT,
         in_minutes: process.env.EXPRESS_RATE_LIMIT_IN_MINUTES
+    },
+    stripe: {
+        secret_key: process.env.STRIPE_SECRET_KEY,
+        api_key: process.env.STRIPE_API_KEY,
+        webhook_secret: process.env.STRIPE_WEBHOOK_SECRET,
+        success_url:process.env.STRIPE_SUCCESS_URL,
+        cancel_url: process.env.STRIPE_CANCEL_URL
     }
 
 }
