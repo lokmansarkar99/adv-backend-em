@@ -22,6 +22,11 @@ import ProductsPage       from "../../features/products/pages/ProductsPage";
 import ProductDetailPage  from "../../features/products/pages/ProductDetailPage";
 import AdminProductsPage  from "../../features/products/admin/AdminProductsPage";
 
+
+import CheckoutPage from "../../features/orders/pages/CheckoutPage";
+import MyOrdersPage from "../../src/features/orders/pages/MyOrdersPage";
+import StripeSuccessPage from "../../features/orders/pages/StripeSuccessPage";
+
 export const router = createBrowserRouter([
   /* ── Public ──────────────────────────────── */
   {
@@ -30,6 +35,9 @@ export const router = createBrowserRouter([
       { path: "/", element: <HomePage /> },
       { path: "/products",          element: <ProductsPage /> },
 { path: "/products/:id",      element: <ProductDetailPage /> },
+{ path: "/checkout", element: <CheckoutPage /> },
+{ path: "/orders", element: <MyOrdersPage /> },
+{ path: "/payment/success", element: <StripeSuccessPage /> },
     ],
   },
 

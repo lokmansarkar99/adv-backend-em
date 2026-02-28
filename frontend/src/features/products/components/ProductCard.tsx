@@ -1,14 +1,38 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ShoppingCart, Star, Package } from "lucide-react";
+import { ShoppingCart, Star, Package, CreditCard } from "lucide-react";
 import type { Product } from "../product.types";
+import { directStripeCheckoutForProduct } from "../../orders/utils/directCheckout";
 
 type Props = { product: Product };
 
 export default function ProductCard({ product }: Props) {
-  const hasDiscount = product.discountPrice && product.discountPrice < product.price;
+  const [buying, setBuying] = useState(false);
+
+  const hasDiscount =
+    product.discountPrice && product.discountPrice < product.price;
   const discount = hasDiscount
-    ? Math.round(((product.price - product.discountPrice!) / product.price) * 100)
+    ? Math.round(
+        ((product.price - product.discountPrice!) / product.price) *
+          100
+      )
     : 0;
+
+  const handleStripeBuy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (product.stock === 0 || buying) return;
+    try {
+      setBuying(true);
+      await directStripeCheckoutForProduct({
+        productId: product._id,
+        quantity: 1,
+      });
+    } catch (err) {
+      console.error(err);
+      setBuying(false);
+      // optionally show toast
+    }
+  };
 
   return (
     <Link
@@ -35,14 +59,18 @@ export default function ProductCard({ product }: Props) {
         )}
         {product.stock === 0 && (
           <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-            <span className="text-sm font-bold text-slate-400">Out of Stock</span>
+            <span className="text-sm font-bold text-slate-400">
+              Out of Stock
+            </span>
           </div>
         )}
       </div>
 
       {/* Info */}
       <div className="p-4 flex flex-col flex-1">
-        <p className="text-xs text-indigo-600 font-medium capitalize mb-1">{product.category}</p>
+        <p className="text-xs text-indigo-600 font-medium capitalize mb-1">
+          {product.category}
+        </p>
         <h3 className="text-sm font-semibold text-slate-800 line-clamp-2 flex-1 leading-snug mb-2">
           {product.name}
         </h3>
@@ -50,34 +78,57 @@ export default function ProductCard({ product }: Props) {
         {/* Rating placeholder */}
         <div className="flex items-center gap-1 mb-2">
           {[...Array(5)].map((_, i) => (
-            <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+            <Star
+              key={i}
+              className="w-3 h-3 fill-amber-400 text-amber-400"
+            />
           ))}
           <span className="text-xs text-slate-400 ml-1">(4.9)</span>
         </div>
 
-        {/* Price */}
-        <div className="flex items-center justify-between mt-auto">
-          <div>
-            {hasDiscount ? (
-              <div className="flex items-center gap-1.5">
+        {/* Price + actions */}
+        <div className="mt-auto space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              {hasDiscount ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base font-bold text-slate-800">
+                    ${product.discountPrice!.toFixed(2)}
+                  </span>
+                  <span className="text-xs text-slate-400 line-through">
+                    ${product.price.toFixed(2)}
+                  </span>
+                </div>
+              ) : (
                 <span className="text-base font-bold text-slate-800">
-                  ${product.discountPrice!.toFixed(2)}
-                </span>
-                <span className="text-xs text-slate-400 line-through">
                   ${product.price.toFixed(2)}
                 </span>
-              </div>
-            ) : (
-              <span className="text-base font-bold text-slate-800">
-                ${product.price.toFixed(2)}
-              </span>
-            )}
+              )}
+            </div>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                // cart logic
+              }}
+              className="w-8 h-8 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white flex items-center justify-center transition-colors"
+            >
+              <ShoppingCart className="w-4 h-4" />
+            </button>
           </div>
+
           <button
-            onClick={(e) => { e.preventDefault(); /* cart logic */ }}
-            className="w-8 h-8 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white flex items-center justify-center transition-colors"
+            onClick={handleStripeBuy}
+            disabled={product.stock === 0 || buying}
+            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <ShoppingCart className="w-4 h-4" />
+            {buying ? (
+              "Redirecting..."
+            ) : (
+              <>
+                <CreditCard className="w-3.5 h-3.5" />
+                Buy now with Stripe
+              </>
+            )}
           </button>
         </div>
       </div>

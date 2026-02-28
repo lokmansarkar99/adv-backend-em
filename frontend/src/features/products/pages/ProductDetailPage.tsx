@@ -1,49 +1,107 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ShoppingCart, ArrowLeft, Package, Tag, Boxes, CheckCircle2, XCircle } from "lucide-react";
+import {
+  ShoppingCart,
+  ArrowLeft,
+  Package,
+  Tag,
+  CheckCircle2,
+  XCircle,
+  CreditCard,
+} from "lucide-react";
 import { productApi } from "../api/productApi";
 import type { Product } from "../product.types";
 import ProductStatusBadge from "../components/ProductStatusBadge";
 import { Loader2 } from "lucide-react";
+import { directStripeCheckoutForProduct } from "../../orders/utils/directCheckout";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
-  const [active,  setActive]  = useState(0); // active image index
+  const [error, setError] = useState<string | null>(null);
+  const [active, setActive] = useState(0);
+  const [buying, setBuying] = useState(false);
+  const [qty, setQty] = useState(1);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    productApi.getById(id)
-      .then((res) => { setProduct(res.data.data); setActive(0); })
-      .catch((err) => setError(err?.response?.data?.message || "Product not found."))
+    productApi
+      .getById(id)
+      .then((res) => {
+        setProduct(res.data.data);
+        setActive(0);
+      })
+      .catch((err) =>
+        setError(
+          err?.response?.data?.message || "Product not found."
+        )
+      )
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+      </div>
+    );
 
-  if (error || !product) return (
-    <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-      <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-      <p className="text-slate-500">{error || "Product not found."}</p>
-      <Link to="/products" className="mt-4 inline-flex text-indigo-600 text-sm hover:underline">
-        ← Back to products
-      </Link>
-    </div>
-  );
+  if (error || !product)
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+        <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+        <p className="text-slate-500">
+          {error || "Product not found."}
+        </p>
+        <Link
+          to="/products"
+          className="mt-4 inline-flex text-indigo-600 text-sm hover:underline"
+        >
+          ← Back to products
+        </Link>
+      </div>
+    );
 
-  const hasDiscount = product.discountPrice && product.discountPrice < product.price;
-  const imageBase   = import.meta.env.VITE_API_ORIGIN;
+  const hasDiscount =
+    product.discountPrice && product.discountPrice < product.price;
+  const imageBase = import.meta.env.VITE_API_ORIGIN;
+
+  const handleStripeBuy = async () => {
+    if (product.stock === 0 || buying) return;
+    try {
+      setBuying(true);
+      const safeQty = Math.max(
+        1,
+        Math.min(qty, product.stock || 1)
+      );
+      await directStripeCheckoutForProduct({
+        productId: product._id,
+        quantity: safeQty,
+      });
+    } catch (err) {
+      console.error(err);
+      setBuying(false);
+      // toast error
+    }
+  };
+
+  const incrementQty = () => {
+    setQty((q) =>
+      product.stock ? Math.min(q + 1, product.stock) : q + 1
+    );
+  };
+  const decrementQty = () => {
+    setQty((q) => Math.max(1, q - 1));
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <Link to="/products" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 mb-8 transition-colors">
+      <Link
+        to="/products"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 mb-8 transition-colors"
+      >
         <ArrowLeft className="w-4 h-4" />
         Back to products
       </Link>
@@ -71,10 +129,16 @@ export default function ProductDetailPage() {
                   key={idx}
                   onClick={() => setActive(idx)}
                   className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
-                    active === idx ? "border-indigo-500 shadow-sm" : "border-slate-200"
+                    active === idx
+                      ? "border-indigo-500 shadow-sm"
+                      : "border-slate-200"
                   }`}
                 >
-                  <img src={`${imageBase}/uploads${img}`} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={`${imageBase}/uploads${img}`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -85,24 +149,40 @@ export default function ProductDetailPage() {
         <div className="space-y-5">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">{product.category}</span>
+              <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
+                {product.category}
+              </span>
               <ProductStatusBadge status={product.status} />
             </div>
-            <h1 className="text-3xl font-black text-slate-800 leading-tight">{product.name}</h1>
+            <h1 className="text-3xl font-black text-slate-800 leading-tight">
+              {product.name}
+            </h1>
           </div>
 
           {/* Price */}
           <div className="flex items-baseline gap-3">
             {hasDiscount ? (
               <>
-                <span className="text-4xl font-black text-slate-800">${product.discountPrice!.toFixed(2)}</span>
-                <span className="text-xl text-slate-400 line-through">${product.price.toFixed(2)}</span>
+                <span className="text-4xl font-black text-slate-800">
+                  ${product.discountPrice!.toFixed(2)}
+                </span>
+                <span className="text-xl text-slate-400 line-through">
+                  ${product.price.toFixed(2)}
+                </span>
                 <span className="px-2 py-0.5 bg-red-100 text-red-600 text-sm font-bold rounded-lg">
-                  -{Math.round(((product.price - product.discountPrice!) / product.price) * 100)}%
+                  -
+                  {Math.round(
+                    ((product.price - product.discountPrice!) /
+                      product.price) *
+                      100
+                  )}
+                  %
                 </span>
               </>
             ) : (
-              <span className="text-4xl font-black text-slate-800">${product.price.toFixed(2)}</span>
+              <span className="text-4xl font-black text-slate-800">
+                ${product.price.toFixed(2)}
+              </span>
             )}
           </div>
 
@@ -111,19 +191,53 @@ export default function ProductDetailPage() {
             {product.stock > 0 ? (
               <>
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span className="text-sm text-green-600 font-medium">In Stock ({product.stock} available)</span>
+                <span className="text-sm text-green-600 font-medium">
+                  In Stock ({product.stock} available)
+                </span>
               </>
             ) : (
               <>
                 <XCircle className="w-4 h-4 text-red-400" />
-                <span className="text-sm text-red-500 font-medium">Out of Stock</span>
+                <span className="text-sm text-red-500 font-medium">
+                  Out of Stock
+                </span>
               </>
             )}
           </div>
 
+          {/* Quantity */}
+          {product.stock > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-slate-700">
+                Quantity
+              </span>
+              <div className="inline-flex items-center rounded-xl border border-slate-200 bg-white">
+                <button
+                  type="button"
+                  onClick={decrementQty}
+                  className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50"
+                >
+                  -
+                </button>
+                <span className="w-10 text-center text-sm font-semibold text-slate-800">
+                  {qty}
+                </span>
+                <button
+                  type="button"
+                  onClick={incrementQty}
+                  className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           <div className="bg-slate-50 rounded-xl p-4">
-            <p className="text-sm text-slate-600 leading-relaxed">{product.description}</p>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              {product.description}
+            </p>
           </div>
 
           {/* Tags */}
@@ -131,21 +245,39 @@ export default function ProductDetailPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <Tag className="w-4 h-4 text-slate-400" />
               {product.tags.map((tag) => (
-                <span key={tag} className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-lg">
+                <span
+                  key={tag}
+                  className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-lg"
+                >
                   {tag}
                 </span>
               ))}
             </div>
           )}
 
-          {/* Add to cart */}
-          <button
-            disabled={product.stock === 0}
-            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-2xl transition-colors shadow-lg shadow-indigo-200/50 disabled:opacity-50 disabled:cursor-not-allowed text-base"
-          >
-            <ShoppingCart className="w-5 h-5" />
-            {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
-          </button>
+          {/* Actions */}
+          <div className="space-y-3">
+            <button
+              disabled={product.stock === 0}
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-2xl transition-colors shadow-lg shadow-indigo-200/50 disabled:opacity-50 disabled:cursor-not-allowed text-base"
+              onClick={() => {
+                // add to cart with qty
+              }}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleStripeBuy}
+              disabled={product.stock === 0 || buying}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-indigo-300 text-indigo-700 rounded-2xl bg-indigo-50 hover:bg-indigo-600 hover:text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CreditCard className="w-5 h-5" />
+              {buying ? "Redirecting to Stripe..." : "Buy now with Stripe"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
