@@ -16,7 +16,11 @@ let server:any;
 
 async function main() {
     try {
-        await mongoose.connect(config.database_url as string);
+        
+        await mongoose.connect(config.database_url as string, {
+            serverSelectionTimeoutMS: 5000,
+            family: 4
+        });
         logger.info(colors.green("Databse connected successfully!"))
         seedAdmin();
 
