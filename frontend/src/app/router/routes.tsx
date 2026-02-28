@@ -61,7 +61,7 @@ export const router = createBrowserRouter([
         element: <UserLayout />,
         children: [
           { path: "/user/dashboard", element: <UserDashboard /> },
-          { path: "/user/orders",    element: <UserOrders /> },
+          { path: "/user/orders",    element: <MyOrdersPage/> },
           { path: "/user/profile",   element: <UserProfile /> },
           { path: "/user/settings",  element: <div className="p-4 text-slate-400">Settings coming soon</div> },
         ],
