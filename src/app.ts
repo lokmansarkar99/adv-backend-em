@@ -8,6 +8,7 @@ import globalErrorHandler from "./app/middlewares/globalErrorHandler"
 import { globalRateLimiter } from "./app/middlewares/rateLimiter"   
 import config from "./config"
 import { StripeController } from "./app/modules/stripe/stripe.controller"
+import passport from './config/passport'
 
 const app:Application = express()
 
@@ -32,6 +33,10 @@ app.post("/api/v1/stripe/webhook", express.raw({type: "application/json"}), Stri
 app.use(cookieParser())
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
+
+
+// Passport
+app.use(passport.initialize())
 
 // Static Files
 

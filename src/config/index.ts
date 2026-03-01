@@ -41,6 +41,12 @@ export default {
         webhook_secret: process.env.STRIPE_WEBHOOK_SECRET,
         success_url:process.env.STRIPE_SUCCESS_URL,
         cancel_url: process.env.STRIPE_CANCEL_URL
+    },
+
+    google: {
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        callback_url: process.env.GOOGLE_CALLBACK_URL
     }
 
 }

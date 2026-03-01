@@ -1,6 +1,7 @@
 import express from "express";
 
 import { AuthController } from "./auth.controller";
+import { GoogleAuthRoutes } from "./google-auth.route";
 import validateRequest from "../../middlewares/validateRequest";
 import { AuthValidation } from "./auth.validation";
 
@@ -57,5 +58,8 @@ router
     validateRequest(AuthValidation.createResetPasswordWithOtpZodSchema),
     AuthController.resetPassword
   );
+
+// ================= Google OAuth =================
+router.use(GoogleAuthRoutes);
 
 export const AuthRoutes = router;
